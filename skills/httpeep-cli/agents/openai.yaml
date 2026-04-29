@@ -1,0 +1,4 @@
+interface:
+  display_name: "HTTPeep CLI"
+  short_description: "Operate HTTPeep traffic capture from CLI"
+  default_prompt: "Use $httpeep-cli to capture, inspect, replay, and debug HTTP traffic with HTTPeep from the terminal."
