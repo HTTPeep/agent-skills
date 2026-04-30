@@ -2,7 +2,7 @@
 
 This reference summarizes the HTTPeep CLI documentation under `content/docs/cli`. Load it when a task needs command details, flag names, examples, or troubleshooting steps beyond the main skill workflow.
 
-Verified against `httpeep-cli` 0.8.6 from HTTPeep commit `798e4e43`. Refresh this reference when CLI subcommands, flags, or output shapes change.
+Verified against `httpeep-cli` 0.8.6 plus the `shell` command update. Refresh this reference when CLI subcommands, flags, or output shapes change.
 
 ## Global Usage
 
@@ -60,6 +60,33 @@ httpeep-cli proxy system status
 ```
 
 When the proxy is stopped, traffic no longer flows through HTTPeep. Existing captured sessions remain until cleared.
+
+## Shell Capture
+
+Use `shell` to enter an interactive child shell with HTTPeep terminal capture enabled:
+
+```bash
+httpeep-cli shell
+hp shell
+```
+
+Behavior:
+
+- starts or reuses the HTTPeep proxy
+- writes setup artifacts under `~/.httpeep/automatic-setup/`
+- loads `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, certificate variables, and runtime hooks for Node.js, Python, Ruby, and Java/JVM tooling
+- enters a child shell; exiting returns to the original terminal
+- exposes `httpeep_intercept_off` inside the child shell to remove the capture environment without closing the shell
+
+Inside the shell, verify with:
+
+```bash
+echo "$HTTPEEP_INTERCEPT_ACTIVE"
+echo "$HTTP_PROXY"
+curl -v https://httpbin.org/get
+```
+
+Agent guidance: suggest `hp shell` for human interactive debugging. For unattended automation, prefer explicit proxy environment variables, `request`, `rules run`, or `proxy start --capture-pid <pid>` because `shell` intentionally waits inside an interactive session.
 
 ## Sessions
 

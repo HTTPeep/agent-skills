@@ -29,7 +29,7 @@ httpeep-cli proxy system status
 httpeep-cli cert status
 ```
 
-Use `proxy system on` only when the user wants system-wide proxying. For scoped capture, prefer explicit app proxy environment variables or `proxy start --capture-pid <pid>`.
+Use `proxy system on` only when the user wants system-wide proxying. For scoped interactive terminal capture, suggest `httpeep-cli shell` or `hp shell`; it starts or reuses the proxy and enters a child shell with HTTPeep proxy variables and runtime hooks loaded. For non-interactive agent execution, prefer explicit app proxy environment variables or `proxy start --capture-pid <pid>` so the agent does not block inside an interactive shell.
 
 3. Capture and inspect traffic:
 
@@ -78,7 +78,8 @@ Check failures in this order:
 3. Recent proxy logs: `httpeep-cli proxy logs --lines 100`
 4. App routing: `HTTP_PROXY`, `HTTPS_PROXY`, or `httpeep-cli proxy system status`
 5. HTTPS trust: `httpeep-cli cert status`, then `httpeep-cli cert install` if needed
-6. Output parsing: rerun relevant commands with `--format json`; remember `sessions watch --format json` emits NDJSON
+6. Terminal capture shell: `httpeep-cli shell` / `hp shell` creates `~/.httpeep/automatic-setup/` and exposes `httpeep_intercept_off` inside the child shell
+7. Output parsing: rerun relevant commands with `--format json`; remember `sessions watch --format json` emits NDJSON
 
 If `httpeep-cli` is not on PATH, instruct the user to open HTTPeep desktop settings and use Settings -> MCP -> Repair CLI / PATH Installation, or call the MCP repair tool when available.
 
@@ -99,6 +100,7 @@ Avoid logging secrets from headers, cookies, Authorization values, or request bo
 
 - Prefer temporary rules with `rules run`, `request`, or `replay --id` before persistent rule edits.
 - Use `--format json` for machine parsing and CI logs.
+- Do not run `httpeep-cli shell` from an unattended automation path unless the user explicitly wants an interactive shell; it intentionally takes over the terminal until the shell exits.
 - Dry-run destructive session cleanup first.
 - Export rules before `rules replace` or `rules reset`.
 - Run `cert install`, `cert uninstall`, `proxy system on`, and `proxy system off` only when the user explicitly asks for certificate trust or system-wide proxy changes.
