@@ -1,5 +1,24 @@
 # HTTPeep CLI Reference
 
+## Installation Check
+
+Before using `httpeep-cli`, verify it is installed:
+
+```bash
+httpeep-cli --version
+```
+
+If the command is not found, install it first:
+
+- **Linux / macOS**: run the following command
+  ```bash
+  curl -fsSL https://s1.httpeep.com/install-cli.sh | bash
+  ```
+- **Windows**: command-line installation is not supported yet. Please download and install from the website:
+  <https://httpeep.com/download>
+
+---
+
 This reference summarizes the HTTPeep CLI documentation under `content/docs/cli`. Load it when a task needs command details, flag names, examples, or troubleshooting steps beyond the main skill workflow.
 
 Verified against `httpeep-cli` 0.8.6 plus the `shell` command update. Refresh this reference when CLI subcommands, flags, or output shapes change.
