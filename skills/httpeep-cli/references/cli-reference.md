@@ -10,7 +10,11 @@ httpeep-cli --version
 
 If the command is not found, install it first:
 
-- **Linux / macOS**: run the following command
+- **macOS** (Homebrew):
+  ```bash
+  brew install --cask httpeep/httpeep/httpeep
+  ```
+- **Linux / macOS** (curl):
   ```bash
   curl -fsSL https://s1.httpeep.com/install-cli.sh | bash
   ```
@@ -326,7 +330,16 @@ httpeep-cli replay file baseline.httpeep
 
 ## Certificate
 
-Manage the root CA for HTTPS interception:
+Manage the root CA for HTTPS interception.
+
+Before capturing traffic, verify that the root certificate is trusted. Without a trusted root CA, HTTPS traffic cannot be decrypted:
+
+```bash
+hp cert status
+hp cert install
+```
+
+Other certificate commands:
 
 ```bash
 httpeep-cli cert status
