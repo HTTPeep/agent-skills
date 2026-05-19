@@ -31,7 +31,17 @@ httpeep-cli cert status
 
 Use `proxy system on` only when the user wants system-wide proxying. For scoped interactive terminal capture, suggest `httpeep-cli shell` or `hp shell`; it starts or reuses the proxy and enters a child shell with HTTPeep proxy variables and runtime hooks loaded. For non-interactive agent execution, prefer explicit app proxy environment variables or `proxy start --capture-pid <pid>` so the agent does not block inside an interactive shell.
 
-3. Capture and inspect traffic:
+3. Configure DNS overrides if traffic routing needs to change without editing application config:
+
+```bash
+httpeep-cli dns list
+httpeep-cli dns global-host upsert --pattern api.example.com --ip 127.0.0.1
+httpeep-cli dns enable
+```
+
+Use `dns env upsert` and `dns active-env set` for environment-specific mappings. Prefer targeted `dns global-host upsert` or `dns env-host upsert` over `dns replace` for single-host changes.
+
+4. Capture and inspect traffic:
 
 ```bash
 httpeep-cli --format json sessions list --keyword login
@@ -45,7 +55,7 @@ httpeep-cli sessions delete --keyword login --dry-run
 httpeep-cli sessions clear --all --yes --dry-run
 ```
 
-4. Apply temporary rules for reproducible tests before changing the global ruleset:
+5. Apply temporary rules for reproducible tests before changing the global ruleset:
 
 ```bash
 httpeep-cli rules run \
@@ -59,7 +69,7 @@ Use `rules upsert`, `rules import`, `rules replace`, or `rules reset` only when 
 httpeep-cli rules export --output rules-backup.json
 ```
 
-5. Send, replay, or record requests:
+6. Send, replay, or record requests:
 
 ```bash
 httpeep-cli --format json request --method GET --url "https://api.example.com/v2/users"
@@ -78,8 +88,9 @@ Check failures in this order:
 3. Recent proxy logs: `httpeep-cli proxy logs --lines 100`
 4. App routing: `HTTP_PROXY`, `HTTPS_PROXY`, or `httpeep-cli proxy system status`
 5. HTTPS trust: `httpeep-cli cert status`, then `httpeep-cli cert install` if needed
-6. Terminal capture shell: `httpeep-cli shell` / `hp shell` creates `~/.httpeep/automatic-setup/` and exposes `httpeep_intercept_off` inside the child shell
-7. Output parsing: rerun relevant commands with `--format json`; remember `sessions watch --format json` emits NDJSON
+6. DNS routing: `httpeep-cli dns list` — verify DNS Override is enabled and active environment has the expected host mappings. Disable DNS Override temporarily with `dns disable` to rule it out.
+7. Terminal capture shell: `httpeep-cli shell` / `hp shell` creates `~/.httpeep/automatic-setup/` and exposes `httpeep_intercept_off` inside the child shell
+8. Output parsing: rerun relevant commands with `--format json`; remember `sessions watch --format json` emits NDJSON
 
 If `httpeep-cli` is not on PATH, instruct the user to open HTTPeep desktop settings and use Settings -> MCP -> Repair CLI / PATH Installation, or call the MCP repair tool when available.
 
@@ -103,6 +114,7 @@ Avoid logging secrets from headers, cookies, Authorization values, or request bo
 - Do not run `httpeep-cli shell` from an unattended automation path unless the user explicitly wants an interactive shell; it intentionally takes over the terminal until the shell exits.
 - Dry-run destructive session cleanup first.
 - Export rules before `rules replace` or `rules reset`.
+- Run `dns replace` only when the user explicitly asks for full DNS configuration replacement. Show the current config first with `httpeep-cli --format json dns list`. Prefer `dns global-host upsert` and `dns env-host upsert` for targeted changes.
 - Run `cert install`, `cert uninstall`, `proxy system on`, and `proxy system off` only when the user explicitly asks for certificate trust or system-wide proxy changes.
 - Run `rules replace`, `rules reset`, or `sessions clear --all --yes` only when the user explicitly asks for persistent replacement, reset, or full cleanup. Show or run the backup/dry-run command first when possible.
 - Treat `import curl`, `import har`, and `import http` as version-dependent because some CLI builds may report that these commands are not yet implemented.
