@@ -5,116 +5,59 @@ description: Use HTTPeep from the terminal with httpeep-cli for proxy lifecycle 
 
 # HTTPeep CLI
 
-## Overview
+## Purpose
 
-Use `httpeep-cli` to operate HTTPeep from the terminal for local debugging, automation, CI checks, and agent workflows. Prefer `--format json` for commands that Codex must parse or summarize.
+Use `httpeep-cli` or its `hp` alias to investigate and control HTTPeep from the terminal. This file defines agent operating policy. For concrete subcommands, flags, schemas, and examples, load the specific file under `references/` that matches the task. Reference files are generated one-to-one from the HTTPeep documentation site.
 
-For detailed flags, examples, and command-specific notes, read `references/cli-reference.md`.
+## Operating Strategy
 
-## Operating Workflow
+1. Establish context before changing state.
+   - Verify that the CLI is available, inspect proxy status, and check relevant recent logs.
+   - Check the current license entitlement before attempting capabilities that may be gated.
 
-1. Verify the CLI and proxy state before deeper debugging:
+2. Scope capture and query output aggressively.
+   - Start with filters relevant to the requested app, domain, process, status, or time range.
+   - Prefer bounded, field-selected JSON results for analysis rather than dumping every captured body and header.
+   - Inspect full session detail only for representative or suspicious requests.
 
-```bash
-httpeep-cli --version
-httpeep-cli --format json proxy status
-httpeep-cli proxy logs --lines 50
-```
+3. Separate failure analysis from slowness analysis.
+   - For failures, group transport errors and status classes, then inspect representative responses and timing breakdowns.
+   - For latency, distinguish ordinary API calls from streams, long polling, downloads, and intentionally delayed rules.
 
-2. Start or repair capture depending on the task:
+4. Prefer reversible changes.
+   - Use temporary rules or request/replay-level overrides for experiments.
+   - Export existing state before persistent replacement or reset operations.
+   - Dry-run destructive session cleanup when supported.
 
-```bash
-httpeep-cli proxy start --port 8800
-httpeep-cli proxy system status
-httpeep-cli cert status
-```
+5. Respect entitlement boundaries and disclose them.
+   - If an attempted capability is unavailable on the user's plan, state the unavailable feature and the evidence from the CLI.
+   - When the requested outcome can be reached with an available alternative, switch to it and tell the user what changed in the implementation approach.
+   - For mock responses on non-Pro plans, prefer resolve-based mock responses over modification of an upstream response.
 
-Use `proxy system on` only when the user wants system-wide proxying. For scoped interactive terminal capture, suggest `httpeep-cli shell` or `hp shell`; it starts or reuses the proxy and enters a child shell with HTTPeep proxy variables and runtime hooks loaded. For non-interactive agent execution, prefer explicit app proxy environment variables or `proxy start --capture-pid <pid>` so the agent does not block inside an interactive shell.
+6. Treat capture data as sensitive.
+   - Redact authorization values, cookies, tokens, API keys, and sensitive bodies from reports.
+   - Report only the fields needed to support conclusions.
 
-3. Configure DNS overrides if traffic routing needs to change without editing application config:
+## Reference Directory
 
-```bash
-httpeep-cli dns list
-httpeep-cli dns global-host upsert --pattern api.example.com --ip 127.0.0.1
-httpeep-cli dns enable
-```
+Start with `references/index.md` when you are unsure which reference file to load. Otherwise load only the file needed for the task:
 
-Use `dns env upsert` and `dns active-env set` for environment-specific mappings. Prefer targeted `dns global-host upsert` or `dns env-host upsert` over `dns replace` for single-host changes.
+- `references/overview.md` for the CLI overview and common workflows.
+- `references/basics.md` for installation, aliases, global flags, JSON output, and troubleshooting.
+- `references/proxy.md` for proxy lifecycle, logs, system proxy, and capture status.
+- `references/sessions.md` for listing, filtering, pagination, field selection, watch, delete, and clear.
+- `references/dns.md` for DNS override configuration.
+- `references/shell.md` for interactive terminal capture.
+- `references/license.md` for `hp license status`, activation, and entitlement checks.
+- `references/launch.md` for launching browsers, terminals, and desktop apps with capture enabled.
+- `references/rules.md` for rules, shortcuts, validation, temporary rules, and plan-gated response modification.
+- `references/request.md` for sending requests through HTTPeep.
+- `references/replay.md` for replaying captured sessions.
+- `references/record.md` for recording traffic flows.
+- `references/cert.md` for HTTPS interception certificates.
+- `references/import.md` for cURL, HAR, and raw HTTP imports.
+- `references/monitor.md` for the terminal traffic monitor.
 
-4. Capture and inspect traffic:
+## Investigation Output
 
-```bash
-httpeep-cli --format json sessions list --keyword login
-httpeep-cli --format json sessions watch --domain api.example.com
-```
-
-Use filters before destructive cleanup. Always dry-run deletes when possible:
-
-```bash
-httpeep-cli sessions delete --keyword login --dry-run
-httpeep-cli sessions clear --all --yes --dry-run
-```
-
-5. Apply temporary rules for reproducible tests before changing the global ruleset:
-
-```bash
-httpeep-cli rules run \
-  --map-remote "api.example.com=http://127.0.0.1:3000" \
-  -- httpeep-cli request --method GET --url "https://api.example.com/users"
-```
-
-Use `rules upsert`, `rules import`, `rules replace`, or `rules reset` only when persistent rules are required. Export existing rules first before destructive changes:
-
-```bash
-httpeep-cli rules export --output rules-backup.json
-```
-
-6. Send, replay, or record requests:
-
-```bash
-httpeep-cli --format json request --method GET --url "https://api.example.com/v2/users"
-httpeep-cli replay --id <session_id> --retry-times 3 --retry-interval-ms 800
-httpeep-cli record start
-httpeep-cli record stop --output baseline.httpeep
-httpeep-cli replay file baseline.httpeep
-```
-
-## Troubleshooting Priority
-
-Check failures in this order:
-
-1. CLI availability: `httpeep-cli --version`
-2. Proxy engine reachability: `httpeep-cli --format json proxy status`
-3. Recent proxy logs: `httpeep-cli proxy logs --lines 100`
-4. App routing: `HTTP_PROXY`, `HTTPS_PROXY`, or `httpeep-cli proxy system status`
-5. HTTPS trust: `httpeep-cli cert status`, then `httpeep-cli cert install` if needed
-6. DNS routing: `httpeep-cli dns list` — verify DNS Override is enabled and active environment has the expected host mappings. Disable DNS Override temporarily with `dns disable` to rule it out.
-7. Terminal capture shell: `httpeep-cli shell` / `hp shell` creates `~/.httpeep/automatic-setup/` and exposes `httpeep_intercept_off` inside the child shell
-8. Output parsing: rerun relevant commands with `--format json`; remember `sessions watch --format json` emits NDJSON
-
-If `httpeep-cli` is not on PATH, instruct the user to open HTTPeep desktop settings and use Settings -> MCP -> Repair CLI / PATH Installation, or call the MCP repair tool when available.
-
-## Trace Evidence
-
-For complex debugging or multi-step capture/replay work, record a concise trace log in the final answer or task notes:
-
-- Commands executed, with important flags
-- Timestamp or sequence order for each major step
-- Session IDs used or produced
-- Relevant JSON fields from `sessions list`, `request`, `rules run`, or `replay`
-- Summary from `httpeep-cli proxy logs --lines <n>` when proxy behavior is involved
-- Rule IDs or temporary rule shortcuts applied
-
-Avoid logging secrets from headers, cookies, Authorization values, or request bodies. Redact sensitive values before reporting.
-
-## Safety Defaults
-
-- Prefer temporary rules with `rules run`, `request`, or `replay --id` before persistent rule edits.
-- Use `--format json` for machine parsing and CI logs.
-- Do not run `httpeep-cli shell` from an unattended automation path unless the user explicitly wants an interactive shell; it intentionally takes over the terminal until the shell exits.
-- Dry-run destructive session cleanup first.
-- Export rules before `rules replace` or `rules reset`.
-- Run `dns replace` only when the user explicitly asks for full DNS configuration replacement. Show the current config first with `httpeep-cli --format json dns list`. Prefer `dns global-host upsert` and `dns env-host upsert` for targeted changes.
-- Run `cert install`, `cert uninstall`, `proxy system on`, and `proxy system off` only when the user explicitly asks for certificate trust or system-wide proxy changes.
-- Run `rules replace`, `rules reset`, or `sessions clear --all --yes` only when the user explicitly asks for persistent replacement, reset, or full cleanup. Show or run the backup/dry-run command first when possible.
-- Treat `import curl`, `import har`, and `import http` as version-dependent because some CLI builds may report that these commands are not yet implemented.
+For multi-step work, report the important commands or actions performed, the session or rule identifiers used, relevant statuses and timings, and any entitlement limitation or fallback applied. Do not expose secrets in that trace.
