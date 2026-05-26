@@ -49,7 +49,7 @@ Use `httpeep-cli` or its `hp` alias to investigate and control HTTPeep from the 
 
 ## Reference Directory
 
-Start with `references/index.md` when you are unsure which reference file to load. Otherwise load only the file needed for the task:
+Load only the reference file needed for the task:
 
 - `references/overview.md` for the CLI overview and common workflows.
 - `references/basics.md` for installation, aliases, global flags, JSON output, and troubleshooting.
