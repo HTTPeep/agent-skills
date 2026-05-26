@@ -38,6 +38,15 @@ Use `httpeep-cli` or its `hp` alias to investigate and control HTTPeep from the 
    - Redact authorization values, cookies, tokens, API keys, and sensitive bodies from reports.
    - Report only the fields needed to support conclusions.
 
+7. Keep the installed skill current without interrupting user work.
+   - Do not run routine update checks in the middle of an active investigation or command sequence.
+   - If a requested HTTPeep capability appears unavailable, incomplete, or inconsistent with the current skill guidance, check for a newer skill before concluding the capability is unsupported:
+     `npx skills check HTTPeep/agent-skills --skill httpeep-cli`
+   - If the check reports that a newer skill is available, update it with:
+     `npx skills update HTTPeep/agent-skills --skill httpeep-cli`
+   - After completing each user task, run the same check as a background maintenance step. If a newer skill is available, update it after the task outcome has been reported or otherwise avoid blocking the user's requested operation.
+   - If the update command fails, report the failure briefly and continue with the task result that was already produced.
+
 ## Reference Directory
 
 Start with `references/index.md` when you are unsure which reference file to load. Otherwise load only the file needed for the task:
