@@ -16,21 +16,15 @@ There are three primary use cases for `httpeep-cli`:
 
 `httpeep-cli` is bundled with the HTTPeep desktop app. When you install HTTPeep, the CLI is placed on your PATH automatically during first launch. No separate install step is needed.
 
+When you update the desktop app, the bundled `httpeep-cli` / `hp` binary updates together with it. On Linux standalone installs, use `hp update` or rerun the install script.
+
 Verify the CLI is available:
 
 ```bash
 httpeep-cli --version
 ```
 
-You can also build and install it from source:
-
-```bash
-# In the project root
-cargo build --package httpeep-cli --manifest-path ./apps/cli/Cargo.toml
-
-# Install to ~/.cargo/bin/httpeep-cli
-bun run install_cli
-```
+`hp` is available as a short alias for interactive use. Documentation and automation examples use the full `httpeep-cli` command for clarity.
 
 ### Fixing PATH issues
 
@@ -116,7 +110,7 @@ httpeep-cli --format json sessions list --fields id,method,url,status_code,timin
 ```
 
 > **Tip:**
-> In CI environments, use `--format json` together to get clean, machine-parseable output with no ANSI escape codes in your logs.
+> In CI environments, use `--format json` together with `--fields` to get clean, machine-parseable output with no ANSI escape codes in your logs.
 
 ## Troubleshooting
 

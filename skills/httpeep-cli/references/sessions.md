@@ -112,6 +112,8 @@ Delete by IDs:
 httpeep-cli sessions delete --id abc123 --id def456
 ```
 
+`sessions delete` accepts the same query filters as `sessions list`, except `--id` is reserved for exact repeated IDs. ID mode and query mode are mutually exclusive, so commands such as `sessions delete --id abc123 --keyword login` are rejected.
+
 Delete by query conditions (with a dry-run preview first):
 
 ```bash
@@ -121,8 +123,6 @@ httpeep-cli sessions delete --keyword login --dry-run
 # Execute the deletion
 httpeep-cli sessions delete --keyword login
 ```
-
-`sessions delete` accepts the same query filters as `sessions list`, except `--id` is reserved for exact repeated IDs. ID mode and query mode are mutually exclusive, so commands such as `sessions delete --id abc123 --keyword login` are rejected.
 
 ## sessions clear
 
@@ -145,24 +145,24 @@ Use `--format json` with `jq` to analyze captured traffic programmatically.
 
 ```bash
 # Find all slow requests (over 500 ms)
-httpeep-cli sessions list --format json | \
+httpeep-cli --format json sessions list --fields id,method,url,status_code,timing | \
   jq '.[] | select(.timing.total_ms > 500) |
       {url, status_code, total_ms: .timing.total_ms}'
 
 # Compute error rate across all captured sessions
-httpeep-cli sessions list --format json | \
+httpeep-cli --format json sessions list --fields id,status_code | \
   jq '{ total: length, errors: [.[] | select(.status_code >= 400)] | length } |
        .error_rate = (.errors / .total * 100 | round)'
 
 # List unique domains
-httpeep-cli sessions list --format json | \
+httpeep-cli --format json sessions list --fields domain | \
   jq '[.[].domain] | unique | sort[]'
 
 # Keep JSON compact for AI agents or CI logs
-httpeep-cli sessions list --format json | \
+httpeep-cli --format json sessions list --fields id,method,url,status_code,timing | \
   jq '.[] | {id, method, url, status_code, timing}'
 
 # Count requests by HTTP method
-httpeep-cli sessions list --format json | \
+httpeep-cli --format json sessions list --fields method | \
   jq 'group_by(.method) | map({method: .[0].method, count: length})'
 ```

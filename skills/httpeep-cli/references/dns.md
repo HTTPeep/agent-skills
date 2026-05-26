@@ -4,162 +4,240 @@
 
 # DNS
 
-`hp dns` manages DNS override rules used by the HTTPeep proxy. Use it to redirect selected hostnames to local IPs, switch between environment-specific mappings, and import or replace DNS configuration from JSON or YAML.
-
-`hp` is the short alias for `httpeep-cli`; both command names work the same way.
-
-## dns list
-
-Show the full DNS override configuration.
+The `dns` command manages HTTPeep DNS Override settings from the terminal. Use it to redirect a production hostname to a local or staging IP, switch between DNS environments, or export the current DNS configuration for automation.
 
 ```bash
+# `hp` is the short alias for `httpeep-cli`
 hp dns list
-hp --format json dns list
+httpeep-cli dns list
 ```
 
-## dns replace
+DNS Override only affects traffic routed through HTTPeep. It does not edit `/etc/hosts`, does not require system-wide DNS changes, and can be toggled without restarting the proxy.
 
-Replace the entire DNS override configuration from a JSON or YAML file.
+> **Note:**
+> Global DNS host entries are available to all users. Environment-scoped DNS groups and active environment switching require Pro entitlement.
+
+## Command overview
+
+| Command | Purpose |
+|---|---|
+| `dns list` | Show the full DNS Override configuration |
+| `dns enable` / `dns disable` | Toggle DNS Override resolution globally |
+| `dns replace` | Replace the full DNS configuration from JSON or YAML |
+| `dns upsert` | Create or update a host mapping (global or environment-scoped) |
+| `dns global-host list` | List global host mappings |
+| `dns global-host delete` | Delete one global host mapping |
+| `dns env list` | List environment groups |
+| `dns env upsert` | Create or replace one environment group |
+| `dns env delete` | Delete one environment group |
+| `dns env-host list` | List host mappings in an environment |
+| `dns env-host delete` | Delete one environment-scoped mapping |
+| `dns active-env set` | Select the active environment |
+
+## Mental model
+
+DNS Override has three layers:
+
+1. **Global switch** — `enabled` turns DNS Override on or off.
+2. **Environment hosts** — mappings under the selected `activeEnv`.
+3. **Global hosts** — fallback mappings that apply regardless of environment.
+
+When a host exists in both the active environment and `globalHosts`, the environment mapping wins. Exact host matches are evaluated before wildcard matches.
+
+## Add host mappings
+
+`dns upsert` creates or updates a host mapping. Omit `--env` for global mappings; pass `--env <name>` for environment-scoped mappings.
+
+```bash
+# Global mapping — applies regardless of active environment
+hp dns upsert \
+  --domain api.example.com \
+  --ip 127.0.0.1
+
+# Wildcard global mapping
+hp dns upsert \
+  --domain "*.internal.example.com" \
+  --ip 10.0.0.5
+
+# Environment-scoped mapping
+hp dns upsert \
+  --env dev \
+  --domain api.example.com \
+  --ip 127.0.0.1
+
+# Disable a mapping without deleting it
+hp dns upsert \
+  --domain api.example.com \
+  --ip 127.0.0.1 \
+  --enabled false
+```
+
+List or delete mappings:
+
+```bash
+hp dns global-host list
+hp dns global-host delete --pattern api.example.com
+hp dns env-host list --env dev
+hp dns env-host delete --env dev --pattern api.example.com
+```
+
+> **Note:**
+> `global-host` and `env-host` subcommands remain available for listing and deleting. Prefer `dns upsert` for creating and updating entries.
+
+## Toggle DNS Override
+
+Use `enable` and `disable` to control whether DNS Override participates in resolution.
+
+```bash
+hp dns disable
+hp dns enable
+```
+
+This only changes the global switch. Existing host mappings remain stored and can be re-enabled later.
+
+## Use environment groups
+
+Environment groups let you switch between dev, staging, and production mappings without editing each host one by one.
+
+Create an empty environment:
+
+```bash
+hp dns env upsert --name dev
+```
+
+Add host entries to it:
+
+```bash
+hp dns upsert \
+  --env dev \
+  --domain api.example.com \
+  --ip 127.0.0.1
+
+hp dns upsert \
+  --env staging \
+  --domain api.example.com \
+  --ip 10.0.1.50
+```
+
+Activate an environment:
+
+```bash
+hp dns active-env set --name dev
+```
+
+List and delete environment entries:
+
+```bash
+hp dns env list
+hp dns env-host list --env dev
+hp dns env-host delete --env dev --pattern api.example.com
+hp dns env delete --name staging
+```
+
+> **Tip:**
+> `dns active-env set --name <env>` creates the environment if it does not already exist. This makes environment switching convenient in scripts.
+
+## Replace the full config
+
+Use `dns replace` when you want to apply a complete DNS configuration from a checked-in file.
+
+```yaml title="dns.yaml"
+enabled: true
+activeEnv: dev
+globalHosts:
+  internal-tool.example.com:
+    ip: 10.0.0.5
+    enabled: true
+environments:
+  dev:
+    hosts:
+      api.example.com:
+        ip: 127.0.0.1
+        enabled: true
+      "*.dev.example.com":
+        ip: 127.0.0.1
+        enabled: true
+  staging:
+    hosts:
+      api.example.com:
+        ip: 10.0.1.50
+        enabled: true
+```
+
+Apply it:
 
 ```bash
 hp dns replace --file ./dns.yaml
-hp dns replace --file ./dns.json
 ```
 
-Read the replacement payload from stdin with `-`:
+`dns replace` accepts JSON or YAML. Pass `-` to read from stdin:
 
 ```bash
 cat ./dns.yaml | hp dns replace --file -
 ```
 
-Example YAML:
+You can also replace a single environment with `dns env upsert --file`:
 
-```yaml
-enabled: true
-active_environment: local
-global_hosts:
+```yaml title="dev-dns.yaml"
+hosts:
   api.example.com:
     ip: 127.0.0.1
     enabled: true
-environments:
-  local:
-    hosts:
-      db.example.com:
-        ip: 127.0.0.1
-        enabled: true
+  auth.example.com:
+    ip: 127.0.0.1
+    enabled: true
 ```
-
-> **Warning:**
-> `dns replace` overwrites the existing DNS override configuration. Export or copy the current configuration first if you may need to restore it.
-
-## dns enable and disable
-
-Enable or disable DNS override resolution without deleting any mappings.
 
 ```bash
-hp dns enable
-hp dns disable
+hp dns env upsert --name dev --file ./dev-dns.yaml
 ```
 
-## dns active-env
+## JSON output
 
-Set the active DNS environment. Environment-scoped host entries from the active environment are applied in addition to global host entries.
-
-```bash
-hp dns active-env set --name local
-```
-
-## dns env
-
-List, create, replace, or delete named DNS environments.
-
-```bash
-# List environments
-hp dns env list
-
-# Create an empty environment
-hp dns env upsert --name local
-
-# Replace an environment from YAML or JSON
-hp dns env upsert --name local --file ./dns-env.yaml
-
-# Read the environment payload from stdin
-cat ./dns-env.yaml | hp dns env upsert --name local --file -
-
-# Delete an environment
-hp dns env delete --name local
-```
-
-Example environment payload:
-
-```json
-{
-  "hosts": {
-    "api.internal.example.com": {
-      "ip": "127.0.0.1",
-      "enabled": true
-    }
-  }
-}
-```
-
-## dns upsert
-
-Add or update DNS host entries. Omit `--env` for global mappings; pass `--env <name>` for environment-scoped mappings.
-
-```bash
-# Add or update a global host entry
-hp dns upsert \
-  --domain api.example.com \
-  --ip 127.0.0.1
-
-# Add or update an environment-scoped host entry
-hp dns upsert \
-  --env local \
-  --domain api.example.com \
-  --ip 127.0.0.1
-
-# Add a disabled environment-scoped entry
-hp dns upsert \
-  --env local \
-  --domain staging.example.com \
-  --ip 127.0.0.1 \
-  --enabled false
-```
-
-## dns global-host
-
-Manage host entries that apply globally, regardless of the active environment. Prefer `hp dns upsert --domain ... --ip ...` for creating and updating entries; `global-host` remains available for listing and deleting global mappings.
-
-```bash
-# List global host entries
-hp dns global-host list
-
-# Delete a global host entry
-hp dns global-host delete --pattern api.example.com
-```
-
-## dns env-host
-
-Manage host entries inside a named DNS environment. Prefer `hp dns upsert --env ... --domain ... --ip ...` for creating and updating entries; `env-host` remains available for listing and deleting environment-scoped mappings.
-
-```bash
-# List host entries in an environment
-hp dns env-host list --env local
-
-# Delete an environment-scoped host entry
-hp dns env-host delete --env local --pattern api.example.com
-```
-
-## Output formats
-
-Use `--format json` when scripting DNS updates or checking state in CI.
+Use `--format json` for scripts and `jq` pipelines:
 
 ```bash
 hp --format json dns list
-hp --format json dns env list
 hp --format json dns global-host list
+hp --format json dns env-host list --env dev
 ```
 
-> **Note:**
-> DNS overrides are enforced by the proxy runtime. Existing long-lived connections may need to reconnect before a changed DNS mapping affects traffic.
+Example: list only enabled global host mappings.
+
+```bash
+hp --format json dns global-host list | \
+  jq 'to_entries[] | select(.value.enabled) | "\(.key) -> \(.value.ip)"'
+```
+
+## Common workflows
+
+### Route a production API to localhost
+
+```bash
+hp dns upsert \
+  --domain api.myapp.com \
+  --ip 127.0.0.1
+
+hp dns enable
+```
+
+### Switch a test run to staging DNS
+
+```bash
+hp dns env upsert --name staging
+hp dns upsert \
+  --env staging \
+  --domain api.myapp.com \
+  --ip 10.0.1.50
+hp dns active-env set --name staging
+```
+
+### Keep team DNS mappings in source control
+
+```bash
+hp --format json dns list > httpeep-dns.json
+hp dns replace --file ./httpeep-dns.json
+```
+
+> **Warning:**
+> DNS Override is applied by HTTPeep's proxy runtime. Applications that bypass the proxy or use their own resolver will not be affected by these mappings.
