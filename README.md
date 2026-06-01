@@ -49,3 +49,8 @@ skills/
 ```bash
 npx skills add /Users/chris/workspaces/agent-skills --skill httpeep-cli --list
 ```
+
+## References Link
+website: [https://httpeep.com](https://httpeep.com)
+docs: [https://docs.httpeep.com](https://docs.httpeep.com)
+blog: [https://docs.httpeep.com/blog](https://docs.httpeep.com/blog)
